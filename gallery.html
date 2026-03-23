@@ -7,78 +7,103 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
 <style>
 body{margin:0;font-family:Arial;background-image:url('https://metin2.download/picture/UOIXWBG4d1PsC0Bjiga6EHj4c380szxg/.jpg');background-size:cover;color:white;}
-.header{text-align:center;font-family:'Cinzel';font-size:50px;color:#00cfff;text-shadow:0 0 30px #00cfff;margin-bottom:10px;}
-.menu{display:flex;justify-content:center;gap:15px;margin-top:10px;}
-.menu button{padding:12px 20px;font-family:'Cinzel';font-size:16px;border-radius:8px;border:2px solid #00cfff;background:#070d14;color:#00eaff;cursor:pointer;transition:0.3s;}
+.header{text-align:center;font-family:'Cinzel';font-size:50px;color:#00cfff;text-shadow:0 0 20px #00cfff;margin:10px 0;}
+.menu{display:flex;align-items:center;gap:10px;margin:0 20px;}
+.menu button{padding:10px 20px;font-family:'Cinzel';font-size:16px;border-radius:8px;border:2px solid #3a6f9e;background:#070d14;color:#00cfff;cursor:pointer;transition:0.3s;}
 .menu button:hover{box-shadow:0 0 20px #00cfff;}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,150px);gap:15px;margin:20px;}
-.gallery img{width:150px;height:150px;object-fit:cover;border-radius:8px;border:2px solid #00cfff;cursor:pointer;}
-#modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;z-index:9999;}
-#modalContent{position:relative;display:flex;flex-direction:column;align-items:center;}
-#modalContent img{max-width:90%;max-height:80%;border:2px solid #00cfff;border-radius:8px;}
-#modalInfo{position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);padding:5px 10px;border-radius:6px;font-size:12px;color:#00eaff;}
-#zoomBtns{position:absolute;top:5px;right:5px;display:flex;gap:5px;}
-#zoomBtns button{padding:5px 8px;border:none;border-radius:5px;background:rgba(0,50,80,0.8);color:#00eaff;cursor:pointer;}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:15px;padding:20px;}
+.gallery img{width:100%;height:150px;object-fit:cover;border-radius:8px;border:2px solid #00cfff;cursor:pointer;transition:0.3s;}
+.gallery img:hover{transform:scale(1.05);box-shadow:0 0 15px #00cfff;}
+#modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);justify-content:center;align-items:center;z-index:9999;flex-direction:column;}
+#modal img{max-width:90%;max-height:80%;border-radius:10px;margin-bottom:10px;transition:0.3s;}
+#modalInfo{color:#00cfff;font-family:'Cinzel';font-size:16px;margin-bottom:15px;}
+#modal button{padding:8px 15px;border:none;border-radius:6px;background:#001a26;color:#00cfff;font-family:'Cinzel';cursor:pointer;}
+#modal button:hover{box-shadow:0 0 20px #00cfff;}
 </style>
 </head>
 <body>
 <div class="header">Atherion Gaming - Galéria</div>
 <div class="menu">
-<button onclick="window.location.href='https://atheriongaming.github.io/index/'">Vissza</button>
+<button onclick="goBack()">Vissza</button>
+<input type="file" id="fileInput" accept="image/*">
+<input type="text" id="uploaderName" placeholder="Feltöltő neve">
+<button onclick="uploadImage()">Feltöltés</button>
 </div>
-<div class="gallery" id="gallery"></div>
+<div class="gallery" id="galleryContainer"></div>
 
 <div id="modal">
-<div id="modalContent">
-<img id="modalImg" src="">
+<img id="modalImg">
 <div id="modalInfo"></div>
-<div id="zoomBtns">
-<button onclick="zoomIn()">+</button>
-<button onclick="zoomOut()">-</button>
-<button onclick="closeModal()">Bezár</button>
-</div>
+<div>
+<button onclick="zoomIn()">Nagyítás</button>
+<button onclick="zoomOut()">Kicsinyítés</button>
+<button onclick="closeModal()">Bezárás</button>
 </div>
 </div>
 
-<script>
-const urlParams = new URLSearchParams(window.location.search);
-const server = urlParams.get('server') || 'magic';
-const galleryKey = 'gallery_' + server;
-let images = JSON.parse(localStorage.getItem(galleryKey)||'[]');
-const galleryDiv = document.getElementById('gallery');
+<script type="module">
+// --- Supabase init ---
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+const supabaseUrl = 'https://YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const galleryContainer = document.getElementById('galleryContainer');
+const modal = document.getElementById('modal');
+const modalImg = document.getElementById('modalImg');
+const modalInfo = document.getElementById('modalInfo');
 let currentZoom = 1;
 
-images.forEach((img,i)=>{
-  const el = document.createElement('img');
-  el.src = img.url;
-  el.alt = img.uploader + ' ' + img.date;
-  el.onclick=()=>openModal(i);
-  galleryDiv.appendChild(el);
-});
+// --- Load images ---
+async function loadImages(){
+    const { data, error } = await supabase
+        .from('gallery')
+        .select('*')
+        .order('created_at', {ascending:false});
+    if(error){console.error(error);return;}
+    galleryContainer.innerHTML='';
+    data.forEach(img=>{
+        const el = document.createElement('img');
+        el.src = img.url;
+        el.dataset.date = new Date(img.created_at).toLocaleDateString();
+        el.dataset.uploader = img.uploader;
+        el.onclick = ()=>{openModal(el);}
+        galleryContainer.appendChild(el);
+    });
+}
 
-let currentIndex = 0;
-function openModal(index){
-  currentIndex=index;
-  const modal=document.getElementById('modal');
-  const modalImg=document.getElementById('modalImg');
-  const modalInfo=document.getElementById('modalInfo');
-  modal.style.display='flex';
-  modalImg.src=images[index].url;
-  modalInfo.innerText=`${images[index].date} - ${images[index].uploader}`;
-  currentZoom=1;
-  modalImg.style.transform='scale(1)';
+// --- Upload image ---
+async function uploadImage(){
+    const fileInput = document.getElementById('fileInput');
+    const uploaderName = document.getElementById('uploaderName').value.trim();
+    if(!fileInput.files[0] || !uploaderName){alert('Válassz fájlt és adj meg nevet!'); return;}
+    const file = fileInput.files[0];
+    const fileName = Date.now()+'_'+file.name;
+    const { data, error: uploadError } = await supabase.storage.from('gallery').upload(fileName, file);
+    if(uploadError){alert('Hiba a feltöltésnél'); console.error(uploadError); return;}
+    const { data: urlData } = supabase.storage.from('gallery').getPublicUrl(fileName);
+    const { error: dbError } = await supabase.from('gallery').insert([{url: urlData.publicUrl, uploader: uploaderName}]);
+    if(dbError){alert('Hiba az adatbázisba írásnál'); console.error(dbError); return;}
+    fileInput.value=''; document.getElementById('uploaderName').value='';
+    loadImages();
 }
-function closeModal(){
-  document.getElementById('modal').style.display='none';
+
+// --- Modal ---
+function openModal(imgEl){
+    modal.style.display='flex';
+    modalImg.src=imgEl.src;
+    modalImg.style.transform='scale(1)'; currentZoom=1;
+    modalInfo.textContent=`Dátum: ${imgEl.dataset.date} | Feltöltő: ${imgEl.dataset.uploader}`;
 }
-function zoomIn(){
-  currentZoom+=0.2;
-  document.getElementById('modalImg').style.transform=`scale(${currentZoom})`;
-}
-function zoomOut(){
-  currentZoom=Math.max(0.2,currentZoom-0.2);
-  document.getElementById('modalImg').style.transform=`scale(${currentZoom})`;
-}
+function closeModal(){modal.style.display='none';}
+
+// --- Zoom ---
+function zoomIn(){currentZoom+=0.1; modalImg.style.transform=`scale(${currentZoom})`;}
+function zoomOut(){currentZoom=Math.max(0.1,currentZoom-0.1); modalImg.style.transform=`scale(${currentZoom})`;}
+
+function goBack(){window.location.href="https://atheriongaming.github.io/index/";}
+
+loadImages();
 </script>
 </body>
 </html>
