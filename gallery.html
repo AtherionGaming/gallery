@@ -3,122 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atherion Gaming Galéria</title>
+<title>Galéria - Atherion Gaming</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#070d14;color:white;}
-.header{text-align:center;font-family:'Cinzel';font-size:50px;color:#00cfff;text-shadow:0 0 30px #00cfff;margin:20px 0;}
-.menu{display:flex;gap:10px;justify-content:center;margin-bottom:20px;}
-.menu-slot{padding:12px 20px;border:2px solid #3a6f9e;border-radius:8px;text-align:center;cursor:pointer;font-family:'Cinzel';color:#00cfff;background:#00122b;transition:0.3s;}
+body{margin:0;font-family:Arial;background-image:url('https://metin2.download/picture/UOIXWBG4d1PsC0Bjiga6EHj4c380szxg/.jpg');background-size:cover;color:white;}
+.header{text-align:center;font-family:'Cinzel';font-size:50px;color:#00cfff;text-shadow:0 0 30px #00cfff;margin:15px;}
+.menu{width:100%;display:flex;justify-content:center;gap:15px;margin-bottom:20px;flex-wrap:wrap;}
+.menu-slot{padding:12px;border:2px solid #3a6f9e;border-radius:8px;text-align:center;cursor:pointer;font-family:'Cinzel';color:#00cfff;background:#070d14;transition:0.3s;}
 .menu-slot:hover{box-shadow:0 0 20px #00cfff;}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:15px;margin:0 20px;}
-.gallery img{width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid #00cfff;cursor:pointer;}
-#modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;z-index:9999;}
-#modalContent{position:relative;width:90%;max-width:600px;background:#000;border-radius:12px;display:flex;justify-content:center;align-items:center;flex-direction:column;padding:10px;}
-#modalContent img{max-width:100%;max-height:80vh;border-radius:8px;}
-#modalInfo{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.6);padding:5px 10px;border-radius:8px;font-size:14px;}
-#modal button{position:absolute;top:10px;right:10px;padding:6px 12px;border:none;border-radius:6px;background:#00cfff;color:#00122b;font-weight:bold;cursor:pointer;}
-#modalNavLeft,#modalNavRight{position:absolute;top:50%;transform:translateY(-50%);padding:10px;border:none;border-radius:6px;background:#00cfff;color:#00122b;font-weight:bold;cursor:pointer;}
-#modalNavLeft{left:5px;}
-#modalNavRight{right:5px;}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:15px;margin:0 20px;}
+.gallery img{width:100%;object-fit:cover;border-radius:8px;border:2px solid #00cfff;cursor:pointer;}
+#modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);justify-content:center;align-items:center;z-index:9999;}
+#modalContent{position:relative;background:#000;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;}
+#modalContent img{max-width:90vw;max-height:80vh;border-radius:8px;}
+#modalInfo{color:#00eaff;margin-top:5px;font-family:'Cinzel';font-size:14px;}
+#modalClose,#modalPrev,#modalNext{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.7);color:#00eaff;border:none;font-size:24px;padding:10px;cursor:pointer;border-radius:6px;}
+#modalClose{top:10px;right:10px;transform:none;}
+#modalPrev{left:5px;}
+#modalNext{right:5px;}
+#uploadForm{margin:20px;text-align:center;}
+#uploadForm input,#uploadForm button{padding:8px;margin:5px;border-radius:6px;border:2px solid #00cfff;background:#001a26;color:#00eaff;font-family:'Cinzel';}
 </style>
 </head>
 <body>
 
-<div class="header">Atherion Gaming Galéria</div>
-
+<div class="header">Atherion Gaming - Galéria</div>
 <div class="menu">
-  <div class="menu-slot" onclick="window.location.href='https://atheriongaming.github.io/index/'">Vissza</div>
+  <div class="menu-slot" onclick="window.location.href='/index/'">Vissza</div>
   <div class="menu-slot" onclick="showUploadForm()">Feltöltés</div>
 </div>
 
-<div id="mainContent">
-  <div class="gallery" id="galleryGrid"></div>
-</div>
+<div id="uploadForm"></div>
+<div class="gallery" id="gallery"></div>
 
 <div id="modal">
   <div id="modalContent">
-    <img id="modalImg" src="">
+    <button id="modalClose" onclick="closeModal()">✖</button>
+    <button id="modalPrev" onclick="prevImage()">◀</button>
+    <img id="modalImg">
+    <button id="modalNext" onclick="nextImage()">▶</button>
     <div id="modalInfo"></div>
-    <button onclick="closeModal()">Bezár</button>
-    <button id="modalNavLeft" onclick="prevImage()">&#9664;</button>
-    <button id="modalNavRight" onclick="nextImage()">&#9654;</button>
   </div>
 </div>
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-const supabaseUrl = 'https://YOUR_SUPABASE_URL';
-const supabaseKey = 'YOUR_SUPABASE_KEY';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-let images = [];
-let currentIndex = 0;
-const server = new URLSearchParams(window.location.search).get('server') || 'magic';
+<script>
+const supabaseUrl="https://[YOUR_SUPABASE_URL]";
+const supabaseKey="[YOUR_SUPABASE_KEY]";
+const supabase=supabase.createClient(supabaseUrl,supabaseKey);
+let images=[], currentIndex=0;
 
 async function loadGallery(){
-  const { data, error } = await supabase
-    .from('gallery')
-    .select('*')
-    .eq('server', server)
-    .order('uploaded_at', { ascending: false });
+  let {data,error}=await supabase.from("gallery").select("*").order("created_at",{ascending:false});
+  if(error) console.log(error);
+  else {
+    images=data;
+    renderGallery();
+  }
+}
 
-  if(error){ console.error(error); return; }
-  images = data;
-  const grid = document.getElementById('galleryGrid');
-  grid.innerHTML = '';
-  data.forEach((img,i)=>{
-    const el = document.createElement('img');
-    el.src = img.url;
-    el.onclick = () => openModal(i);
-    grid.appendChild(el);
+function renderGallery(){
+  const gal=document.getElementById("gallery");
+  gal.innerHTML="";
+  images.forEach((img,i)=>{
+    const el=document.createElement("img");
+    el.src=img.url;
+    el.onclick=()=>{openModal(i)};
+    gal.appendChild(el);
   });
 }
 
-async function showUploadForm(){
-  const main = document.getElementById('mainContent');
-  main.innerHTML = `
-    <form id="uploadForm" style="display:flex;flex-direction:column;gap:10px;max-width:300px;margin:20px auto;">
-      <label>Kép kiválasztása:</label>
-      <input type="file" id="imgInput" accept="image/*" required>
-      <label>Feltöltő neve:</label>
-      <input type="text" id="uploaderName" required>
-      <button type="button" onclick="uploadImage()">Feltöltés</button>
-    </form>`;
+function openModal(i){
+  currentIndex=i;
+  const img=images[i];
+  document.getElementById("modalImg").src=img.url;
+  document.getElementById("modalInfo").innerText=`${img.uploader} - ${new Date(img.date).toLocaleDateString()}`;
+  document.getElementById("modal").style.display="flex";
+}
+
+function closeModal(){document.getElementById("modal").style.display="none";}
+function prevImage(){if(currentIndex>0) openModal(--currentIndex);}
+function nextImage(){if(currentIndex<images.length-1) openModal(++currentIndex);}
+
+function showUploadForm(){
+  const form=document.getElementById("uploadForm");
+  form.innerHTML=`<input type="file" id="imgInput" accept="image/*">
+  <input type="date" id="uploadDate">
+  <input type="text" id="uploaderName" placeholder="Feltöltő neve">
+  <button onclick="uploadImage()">Feltöltés</button>`;
 }
 
 async function uploadImage(){
-  const fileInput = document.getElementById('imgInput');
-  const nameInput = document.getElementById('uploaderName').value.trim();
-  if(!fileInput.files[0] || !nameInput){ alert('Tölts ki minden mezőt!'); return; }
-  const file = fileInput.files[0];
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}.${fileExt}`;
-  const { data, error } = await supabase.storage.from('gallery').upload(fileName, file);
-  if(error){ alert('Hiba a feltöltés során: '+error.message); return; }
-  const { publicURL } = supabase.storage.from('gallery').getPublicUrl(fileName);
-  const { error: insertErr } = await supabase.from('gallery').insert([
-    { server, url: publicURL, uploader: nameInput, uploaded_at: new Date() }
-  ]);
-  if(insertErr){ alert('Hiba az adatbázis írásánál: '+insertErr.message); return; }
+  const file=document.getElementById("imgInput").files[0];
+  const date=document.getElementById("uploadDate").value;
+  const name=document.getElementById("uploaderName").value;
+  if(!file||!date||!name){alert("Tölts ki minden mezőt!");return;}
+  const {data,error}=await supabase.storage.from("gallery").upload(file.name,file);
+  if(error){alert("Hiba a feltöltés során!"); console.log(error); return;}
+  const url=supabase.storage.from("gallery").getPublicUrl(file.name).data.publicUrl;
+  const {error:err}=await supabase.from("gallery").insert([{url,date,uploader:name}]);
+  if(err){alert("Hiba az adatbázisba íráskor!"); console.log(err); return;}
   loadGallery();
-  document.getElementById('mainContent').innerHTML = '<div class="gallery" id="galleryGrid"></div>';
 }
-
-function openModal(index){
-  currentIndex = index;
-  const img = images[index];
-  document.getElementById('modalImg').src = img.url;
-  document.getElementById('modalInfo').innerText = `Feltöltő: ${img.uploader} | Dátum: ${new Date(img.uploaded_at).toLocaleDateString()}`;
-  document.getElementById('modal').style.display='flex';
-}
-function closeModal(){ document.getElementById('modal').style.display='none'; }
-function prevImage(){ currentIndex = (currentIndex-1+images.length)%images.length; openModal(currentIndex); }
-function nextImage(){ currentIndex = (currentIndex+1)%images.length; openModal(currentIndex); }
 
 loadGallery();
 </script>
-
 </body>
 </html>
